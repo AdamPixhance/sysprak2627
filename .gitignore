@@ -1,0 +1,12 @@
+# Compiler outputs
+*.o
+*.out
+*.exe
+a.out
+
+# Build directories
+build/
+
+# Editor temporary files
+*.swp
+*~

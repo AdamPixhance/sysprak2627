@@ -1,0 +1,9 @@
+This is my first text created using the Ubunutu shell.
+
+I got here by doing the folloing:
+mkdir -p linux-practice
+cd linux-practice
+touch first.txt
+nano first.txt
+Save with Ctrl+O
+Exit with Ctrl+X
