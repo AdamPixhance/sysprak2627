@@ -31,7 +31,7 @@ int main(void)
 
     // trying out scanf
     printf("Give me 2 numbers to test my addiere function!\n");
-    
+
     /*  commented out because it is not effective. learned how to scanf properly
     int tmpInput = 0;
     scanf("%d", &tmpInput);
@@ -49,6 +49,18 @@ int main(void)
     }
 
     printf("You chose the number %d and the number %d to be added! the result is = %d!\n", addA, addB, addiere(addA, addB));
+
+    // trying scanf with chars
+    printf("please enter a character that you would like to be given back!");
+    char s;
+    scanf(" %c", &s); // the leading white space makes sure to not take the new line char from the scanf earlier
+    printf("the char you entered is = %c \n", s);
+
+    // the difference between %i and %d
+    int inputA = 0;
+    int inputB = 0;
+    scanf ("%d %i", &inputA, &inputB);
+    printf("the percent d of the number (012) = %d, whereas the percent i of the number (012) = %i\n", inputA, inputB);
 
     // closing the main method with return value
     return 0;
