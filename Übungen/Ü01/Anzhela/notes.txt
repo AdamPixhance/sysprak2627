@@ -1,0 +1,6 @@
+w3schools and geeksforgeeks courses for C
+myuninotes.com/5.semester/sysprak/systempraktikum
+research: &.2f vs &f in scanf 
+research sizeof and how it works with strings
+research malloc
+research arrays and initialising them with *
