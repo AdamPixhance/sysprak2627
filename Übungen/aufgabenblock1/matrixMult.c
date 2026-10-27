@@ -8,13 +8,7 @@
 // Function for Generating 1 random int
 int zufallZahl()
 {
-    return rand() % UPPER + 1; // using rand to generate a number and Modulu to set an upper limit
-}
-
-// Function for Generating a random number in an array
-void zufallZahlArray(int *arrayItem)
-{
-    *arrayItem = zufallZahl();
+    return rand() % (UPPER + 1); // using rand to generate a number and Modulu to set an upper limit
 }
 
 // Function to print arrays
@@ -61,17 +55,17 @@ int main(void)
     {
         for (int y = 0; y < N; y++)
         {
-            zufallZahlArray(&arrayOne[x][y]);
-            zufallZahlArray(&arrayTwo[x][y]);
+            arrayOne[x][y] = zufallZahl();
+            arrayTwo[x][y] = zufallZahl();
         }
     }
 
-    puts("The random arrays have been generated.");
+    puts("Hello! The random arrays have been generated.");
 
     // printing out the arrays using the printMatrix custom function
-    printf("arrayOne with the dimentsion %d x %d has the following elements:\n", N, N);
+    printf("arrayOne with the dimension %d x %d has the following elements:\n", N, N);
     printMatrix(N, arrayOne);
-    printf("arrayTwo with the dimentsion %d x %d has the following elements:\n", N, N);
+    printf("arrayTwo with the dimension %d x %d has the following elements:\n", N, N);
     printMatrix(N, arrayTwo);
 
     // multiplying both matrixes
@@ -79,7 +73,7 @@ int main(void)
     ArrayMatrixMult(N, arrayOne, arrayTwo, arrayThree);
 
     // printing out the Product array
-    printf("The product array of ArrayOne and ArrayTwo with the dimenstion %d x %d =\n", N, N);
+    printf("The product array of ArrayOne and ArrayTwo with the dimension %d x %d =\n", N, N);
     printMatrix(N, arrayThree);
 
     /* Testing if the zufallZahl works
