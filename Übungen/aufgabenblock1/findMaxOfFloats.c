@@ -31,9 +31,9 @@ int main(int argc, char *argv[])
     "r" here is our fopen mode, which is reading mode
     */
 
-    int option;          // needed to go through the argc options
+    int option;              // needed to go through the argc options
     char fileName[256] = ""; // thats the longest possible file name in windows
-    FILE *myFile = NULL; // declaring an empty FILE pointer
+    FILE *myFile = NULL;     // declaring an empty FILE pointer
     if ((option = getopt(argc, argv, "f:")) != -1)
     {
         switch (option)
