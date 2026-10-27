@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
     */
 
     int option;          // needed to go through the argc options
+    char fileName[256] = ""; // thats the longest possible file name in windows
     FILE *myFile = NULL; // declaring an empty FILE pointer
     if ((option = getopt(argc, argv, "f:")) != -1)
     {
@@ -41,20 +42,19 @@ int main(int argc, char *argv[])
             myFile = fopen(optarg, "r");
             break;
 
-        default:
-            puts("invalid option given. Please type ./find max -f \"<your file path and name>\" correctly and try again.");
+        default: // the case where the user tries to call an option but it doesn't match f
+            puts("invalid option given. Please type ./find max -f <your file path and name> correctly and try again.");
             exit(1);
         }
     }
-    else
+    else // when the user calls ./findmax without giving an argv as an option
     {
         puts("Please write the name of the file you want to process:");
-        char *bufferFileName;
-        scanf("%s", &bufferFileName);
-        myFile = fopen(*bufferFileName, "r");
+        scanf("%s", fileName);
+        myFile = fopen(fileName, "r");
     }
 
-    // error handling in the case of the file not opening
+    // Trying to open the file and error handling in the case of the file not opening
     if (myFile == NULL)
     {
         perror("fopen failed to open the given file"); // perror gives more context if available from the stdlib
