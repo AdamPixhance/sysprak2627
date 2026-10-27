@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
     // maxDobule will store the result
     double maxDouble = 0;
 
-    {                             // creating a local scope
-                                  // create buffers to store the floats we read
+    { // creating a local scope
+        // create buffers to store the floats we read
         char bufferChar[40] = {}; // Googled how many digits are needed to type out that max float in C
         double bufferDouble = 0;
         int counter = 0;
