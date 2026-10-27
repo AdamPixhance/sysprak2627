@@ -18,7 +18,7 @@ void printMatrix(int size, int array[size][size])
     {
         for (int y = 0; y < size; y++)
         {
-            printf("%d   ", array[x][y]);
+            printf("%3d ", array[x][y]);
         }
         printf("\n");
     }
