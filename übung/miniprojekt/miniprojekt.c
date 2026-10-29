@@ -6,13 +6,13 @@
 const char Matrikelnummer[] = "12499672";
 const char DefaultName[] = "Adam Alkhatib";
 
-// 1 print
+// 1 - print
 void print(char *eingabetext)
 {
     printf("%s\n", eingabetext);
 }
 
-// 2 reverse
+// 2 - reverse
 void reverse(char *eingabetext)
 {
     size_t size = strlen(eingabetext);
@@ -25,7 +25,7 @@ void reverse(char *eingabetext)
     strcpy(eingabetext, reversed);
 }
 
-// 3 duplicate
+// 3 - duplicate
 char *duplicate(char *eingabetext)
 {
     // allocate temp memory with malloc with double the size of eingabetext
@@ -50,11 +50,11 @@ char *duplicate(char *eingabetext)
     return temp;
 }
 
-// 4 increment
+// 4 - increment
 void increment(int jump, char *eingabetext)
 {
     size_t length = strlen(eingabetext);
-    for (int i = 0; i <= length; i++)
+    for (size_t i = 0; i < length; i++)
     {
         if (eingabetext[i] >= 65 && eingabetext[i] <= 90) // capital letters first
         {
@@ -75,11 +75,11 @@ void increment(int jump, char *eingabetext)
     }
 }
 
-// 5 decrement
+// 5 - decrement
 void decrement(int jump, char *eingabetext)
 {
     size_t length = strlen(eingabetext);
-    for (int i = 0; i <= length; i++)
+    for (size_t i = 0; i < length; i++)
     {
         if (eingabetext[i] >= 65 && eingabetext[i] <= 90) // capital letters first
         {
@@ -100,8 +100,257 @@ void decrement(int jump, char *eingabetext)
     }
 }
 
-// 6 count letters
-countLetters
+// 6 - count letters
+char *countLetters(char *eingabetext)
+{
+    // measure length
+    size_t eingabeLength = strlen(eingabetext);
+
+    // create the counter array and fill it with empty values
+    size_t counterCapacity = eingabeLength == 0 ? 1 : eingabeLength;
+    size_t counter[counterCapacity][2];
+    // fill counter with empty values
+    for (size_t i = 0; i < counterCapacity; i++)
+    {
+        counter[i][0] = 0;
+        counter[i][1] = 0;
+    }
+
+    // count how often each character appears
+    size_t uniqueCount = 0;
+    for (size_t i = 0; i < eingabeLength; i++)
+    {
+        int found = 0;
+        for (size_t j = 0; j < uniqueCount; j++)
+        {
+            if (counter[j][0] == (unsigned char)eingabetext[i])
+            {
+                counter[j][1] += 1;
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            counter[uniqueCount][0] = (unsigned char)eingabetext[i];
+            counter[uniqueCount][1] = 1;
+            uniqueCount++;
+        }
+    }
+
+    // measure the space needed for each character and its count
+    size_t outputLength = 0;
+    for (size_t i = 0; i < eingabeLength; i++)
+    {
+        for (size_t j = 0; j < uniqueCount; j++)
+        {
+            if (counter[j][0] == (unsigned char)eingabetext[i])
+            {
+                size_t count = counter[j][1];
+                size_t digitCount = 1;
+                while (count >= 10)
+                {
+                    count /= 10;
+                    digitCount++;
+                }
+                outputLength += 1 + digitCount;
+                break;
+            }
+        }
+    }
+
+    // create bufferText with enough space for the counted text
+    char *bufferText = malloc(outputLength + 1);
+    if (bufferText == NULL)
+    {
+        perror("malloc failed in countLetters");
+        exit(1);
+    }
+
+    // add each original character and its total count to bufferText
+    size_t currentBufferLength = 0;
+    for (size_t i = 0; i < eingabeLength; i++)
+    {
+        size_t j = 0;
+        while (counter[j][0] != (unsigned char)eingabetext[i])
+        {
+            j++;
+        }
+
+        bufferText[currentBufferLength] = eingabetext[i];
+        currentBufferLength++;
+        int written = snprintf(bufferText + currentBufferLength,
+                               outputLength - currentBufferLength + 1,
+                               "%zu",
+                               counter[j][1]);
+        if (written < 0)
+        {
+            free(bufferText);
+            perror("snprintf failed in countLetters");
+            exit(1);
+        }
+        currentBufferLength += (size_t)written;
+    }
+    bufferText[currentBufferLength] = '\0';
+
+    // resize the input string after bufferText has been filled
+    char *temp = realloc(eingabetext, outputLength + 1);
+    if (temp == NULL)
+    {
+        free(bufferText);
+        perror("realloc failed in countLetters");
+        exit(1);
+    }
+
+    // copy the counted text into the resized input string and return it
+    strcpy(temp, bufferText);
+    free(bufferText);
+    return temp;
+}
+
+// 7 - snakeify
+char *snakeify(char *eingabetext)
+{
+    // measure the input length
+    size_t eingabeLength = strlen(eingabetext);
+
+    // return the input if it is empty
+    if (eingabeLength == 0)
+    {
+        return eingabetext;
+    }
+
+    // create an empty bufferText with enough space for the result
+    char bufferText[eingabeLength * 2];
+    strcpy(bufferText, "");
+
+    // add each character and an underscore, stopping before the last character
+    for (size_t i = 0; i < eingabeLength - 1; i++)
+    {
+        size_t currentBufferLength = strlen(bufferText);
+        bufferText[currentBufferLength] = eingabetext[i];
+        bufferText[currentBufferLength + 1] = '_';
+        bufferText[currentBufferLength + 2] = '\0';
+    }
+
+    // add the last character without an underscore after it
+    size_t currentBufferLength = strlen(bufferText);
+    bufferText[currentBufferLength] = eingabetext[eingabeLength - 1];
+    bufferText[currentBufferLength + 1] = '\0';
+
+    // resize the input string to make room for bufferText
+    char *temp = realloc(eingabetext, eingabeLength * 2);
+    if (temp == NULL)
+    {
+        perror("realloc failed in snakeify");
+        exit(1);
+    }
+
+    // copy bufferText into the resized input string and return it
+    strcpy(temp, bufferText);
+    return temp;
+}
+
+// 8 - invert case
+void invertCase(char *eingabetext)
+{
+    // measure the length
+    size_t length = strlen(eingabetext);
+
+    // go through every character in the input text
+    for (size_t i = 0; i < length; i++)
+    {
+        if (eingabetext[i] >= 65 && eingabetext[i] <= 90) // capital letters
+        {
+            eingabetext[i] += 32;
+        }
+        else if (eingabetext[i] >= 97 && eingabetext[i] <= 122) // small case letters
+        {
+            eingabetext[i] -= 32;
+        }
+    }
+}
+
+// 9 - sort
+void sort(char *eingabetext)
+{
+    // measure the length
+    size_t eingabeLength = strlen(eingabetext);
+
+    // create bufferText and copy all characters into it
+    char bufferText[eingabeLength + 1];
+    for (size_t i = 0; i < eingabeLength; i++)
+    {
+        bufferText[i] = eingabetext[i];
+    }
+    bufferText[eingabeLength] = '\0';
+
+    // find the smallest character and move it to the next sorted position
+    for (size_t i = 0; i < eingabeLength; i++)
+    {
+        size_t minPosition = i;
+        for (size_t j = i + 1; j < eingabeLength; j++)
+        {
+            if (bufferText[j] < bufferText[minPosition])
+            {
+                minPosition = j;
+            }
+        }
+
+        // switch the smallest character into the current position
+        char temp = bufferText[i];
+        bufferText[i] = bufferText[minPosition];
+        bufferText[minPosition] = temp;
+    }
+
+    // copy the sorted text back into the input string
+    strcpy(eingabetext, bufferText);
+}
+
+// 0 - length
+char *length(char *eingabetext)
+{
+    // measure the input length
+    size_t eingabeLength = strlen(eingabetext);
+
+    // count how many digits are needed for the length
+    size_t digitCount = 1;
+    size_t lengthToCheck = eingabeLength;
+    while (lengthToCheck >= 10)
+    {
+        lengthToCheck /= 10;
+        digitCount++;
+    }
+
+    // create bufferText with space for the digits and original text
+    char *bufferText = malloc(digitCount + eingabeLength + 1);
+    if (bufferText == NULL)
+    {
+        perror("malloc failed in length");
+        exit(1);
+    }
+
+    // add the input length at the beginning of bufferText
+    snprintf(bufferText, digitCount + 1, "%zu", eingabeLength);
+
+    // add the original input text after the length
+    strcat(bufferText, eingabetext);
+
+    // resize eingabetext to make room for the length digits
+    char *temp = realloc(eingabetext, digitCount + eingabeLength + 1);
+    if (temp == NULL)
+    {
+        free(bufferText);
+        perror("realloc failed in length");
+        exit(1);
+    }
+
+    // copy bufferText into the resized input string and return it
+    strcpy(temp, bufferText);
+    free(bufferText);
+    return temp;
+}
 
 // ---------------------------------------------------
 // start of main
@@ -119,11 +368,8 @@ int main(int argc, char *argv[])
         source = DefaultName;
     }
 
-    // Calculate required memory
-    size_t size = strlen(source);
-
     // Allocate memory with malloc
-    char *dynamicInput = malloc(size + 1);
+    char *dynamicInput = malloc(strlen(source) + 1);
 
     if (dynamicInput == NULL)
     {
@@ -134,35 +380,85 @@ int main(int argc, char *argv[])
     // Copy string into the allocated memory
     strcpy(dynamicInput, source);
 
-    // ----------------------------------
     // start using the functions
-    // 1 testing print
-    puts("Testing print:");
-    print(dynamicInput);
+    for (size_t i = 0; i < strlen(Matrikelnummer); i++)
+    {
+        if (Matrikelnummer[i] == '1')
+        {
+            print(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '2')
+        {
+            reverse(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '3')
+        {
+            dynamicInput = duplicate(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '4')
+        {
+            if (Matrikelnummer[i + 1] != '\0')
+            {
+                int jump = Matrikelnummer[i + 1] - '0'; // - '0' to convert into an integer
+                increment(jump, dynamicInput);
+            }
+        }
+        else if (Matrikelnummer[i] == '5')
+        {
+            if (Matrikelnummer[i + 1] != '\0')
+            {
+                int jump = Matrikelnummer[i + 1] - '0'; // - '0' to convert into an integer
+                decrement(jump, dynamicInput);
+            }
+        }
+        else if (Matrikelnummer[i] == '6')
+        {
+            dynamicInput = countLetters(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '7')
+        {
+            dynamicInput = snakeify(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '8')
+        {
+            invertCase(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '9')
+        {
+            sort(dynamicInput);
+        }
+        else if (Matrikelnummer[i] == '0')
+        {
+            dynamicInput = length(dynamicInput);
+        }
+    }
 
-    // 2 testing reverse
-    puts("\nTesting reverse:");
-    reverse(dynamicInput);
-    print(dynamicInput);
+    // double checking the result in the terminal
+    // print(dynamicInput);
 
-    // 3 testing duplicate
-    puts("\nTesting duplicate:");
-    dynamicInput = duplicate(dynamicInput);
-    print(dynamicInput);
+    // save the final text in output.txt
+    FILE *outputFile = fopen("output.txt", "w");
+    if (outputFile == NULL)
+    {
+        perror("could not open output.txt");
+        free(dynamicInput);
+        return 1;
+    }
 
-    // 4 testing increment
-    puts("\nTesting increment:");
-    increment(5, dynamicInput);
-    print(dynamicInput);
+    if (fputs(dynamicInput, outputFile) == EOF)
+    {
+        perror("could not write to output.txt");
+        fclose(outputFile);
+        free(dynamicInput);
+        return 1;
+    }
 
-    // 5 testing decrement
-    puts("\nTesting decrement:");
-    decrement(5, dynamicInput);
-    print(dynamicInput);
-
-    // 6 count letters
-    puts("\nTesting count letters:");
-
+    if (fclose(outputFile) != 0)
+    {
+        perror("could not close output.txt");
+        free(dynamicInput);
+        return 1;
+    }
 
     // End of main
     free(dynamicInput);
