@@ -58,19 +58,21 @@ void increment(int jump, char *eingabetext)
     {
         if (eingabetext[i] >= 65 && eingabetext[i] <= 90) // capital letters first
         {
-            eingabetext[i] += jump;
-            if (eingabetext[i] > 90) // correcting for letters that go past Z
+            int newChar = (unsigned char)eingabetext[i] + jump;
+            if (newChar > 90) // correcting for letters that go past Z
             {
-                eingabetext[i] -= 26;
+                newChar -= 26;
             }
+            eingabetext[i] = newChar;
         }
         else if (eingabetext[i] >= 97 && eingabetext[i] <= 122) // small case letters
         {
-            eingabetext[i] += jump;
-            if (eingabetext[i] > 122) // correcting for letters jumping past z
+            int newChar = (unsigned char)eingabetext[i] + jump;
+            if (newChar > 122) // correcting for letters jumping past z
             {
-                eingabetext[i] -= 26;
+                newChar -= 26;
             }
+            eingabetext[i] = newChar;
         }
     }
 }
@@ -83,19 +85,21 @@ void decrement(int jump, char *eingabetext)
     {
         if (eingabetext[i] >= 65 && eingabetext[i] <= 90) // capital letters first
         {
-            eingabetext[i] -= jump;
-            if (eingabetext[i] < 65) // correcting for letters that go behind the A
+            int newChar = (unsigned char)eingabetext[i] - jump;
+            if (newChar < 65) // correcting for letters that go behind the A
             {
-                eingabetext[i] += 26;
+                newChar += 26;
             }
+            eingabetext[i] = newChar;
         }
         else if (eingabetext[i] >= 97 && eingabetext[i] <= 122) // small case letters
         {
-            eingabetext[i] -= jump;
-            if (eingabetext[i] < 97) // correcting for letters jumping behind the a
+            int newChar = (unsigned char)eingabetext[i] - jump;
+            if (newChar < 97) // correcting for letters jumping behind the a
             {
-                eingabetext[i] += 26;
+                newChar += 26;
             }
+            eingabetext[i] = newChar;
         }
     }
 }
