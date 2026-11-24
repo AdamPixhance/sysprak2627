@@ -11,182 +11,217 @@ Die Eintr¨ age in der Bestenliste sind nach der Anzahl der Rateversuche geordne
 
 // includes
 #include <stdlib.h>
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
-// definitions
-#define NAME_MAX_CHAR_COUNT 20
-#define NAME_CAPACITY_NEEDED (NAME_MAX_CHAR_COUNT + 1)
-#define MAX_NUMBER_RANGE 100
-#define MIN_NUMBER_RANGE 1
-#define MAX_DIGITS_TO_GUESS 3
+// gameRootCycle constants
+#define GAME_ROOT_CYCLE_QUIT 0
+#define GAME_ROOT_CYCLE_CRASH -1
+#define GAME_ROOT_CYCLE_CONTINUE 1
 
-// constants
-char KEYWORD_TO_CONTINUE[] = "yes";
+// oneGameCycle constants
+#define STARTING_MIN_NUMBER 0
+#define STARTING_MAX_NUMBER 100
+#define IS_GUESSED_WRONG 0
+#define IS_GUESSED_CORRECT 1
 
-// declarations
-int setPlayerName(char *playerNameAddress, size_t capacity);
-int generateRandomNumber(void);
-void gameCycleLoop(void);
-int captureCleanInputFromUser(char *whereToWriteString, size_t writingCapicity);
-int guessingGameCycle(int *guessAttemptsCounter, int *currentMin, int *currentMax, int numberToGuess);
-int continueCheck(void);
+// innerGameCycleGuessLoop constant
+#define INNER_GAME_CYCLE_GUESS_LOOP_CORRECT 1
+#define INNER_GAME_CYCLE_GUESS_LOOP_WRONG 0
 
-// =======================================
-// Start of main
-int main(void)
+// gameContinueCheck constants
+const char *CONTINUE_KEYWORD = "yes";
+#define CONTINUE_STRING_CHECK_SIZE 32
+
+// oneGuessInstance constants
+#define ONE_GUESS_INSTANCE_WRONG 0
+#define ONE_GUESS_INSTANCE_RIGHT 1
+
+// continuecheckUserInput
+#define CONTINUE_CHECK_USER_INPUT_FAILED -1
+#define CONTINUE_CHECK_USER_INPUT_YES 1
+#define CONTINUE_CHECK_USER_INPUT_NO 0
+
+// takeInputFromUser constants
+#define takeInputfromUserFailed -1
+#define takeInputfromUserSuccess 1
+
+// help functions forward declaration
+int gameRootCycle();
+int oneGameCycle();
+void gameLooper();
+int gameContinueCheck();
+int continueCheckUserInput();
+int takeInputFromUser(char *whereToWriteString, size_t InputStringSize);
+int generateNewRandomNumber();
+int innerGameCycleGuessLoop();
+int oneGuessInstance(int *currentMin, int *currenMax);
+
+// -----------------------
+// start of main
+int main(int argc, char *argv[])
 {
-    puts("Number Guesser game started!");
-    srand(time(0)); // initialize random seed once only
-
-    char playerName[NAME_CAPACITY_NEEDED];
-    if (!setPlayerName(playerName, sizeof(playerName)))
+    puts("Programm started");
+    int gameQuitStatus = gameRootCycle();
+    if (gameQuitStatus == GAME_ROOT_CYCLE_CRASH)
     {
-        puts("could not read the username input. Exiting programm.");
+        puts("The game crashed. Quitting the programm now...");
         return 1;
     }
-
-    printf("The player name is %s.\n", playerName);
-    puts("Starting game loop:....");
-
-    gameCycleLoop();
+    else if (gameQuitStatus == GAME_ROOT_CYCLE_QUIT)
+    {
+        puts("Quitting game. Thanks for playing today!");
+    }
 
     return 0;
 }
+// end of main
+// -----------------------
 
-// =======================================
-// Help functions
-int setPlayerName(char *playerNameAddress, size_t capacity)
+// help functions definitions
+// -----------------------
+int gameRootCycle()
 {
-    puts("Please type the player name:");
+    srand(time(0)); // seed the random number generator
 
-    return captureCleanInputFromUser(playerNameAddress, capacity);
+    gameLooper();
+    return GAME_ROOT_CYCLE_QUIT; // normal gameQuitStatus
 }
 
-int generateRandomNumber(void)
+// -----------------------
+int oneGameCycle()
 {
-    int generatedNumber = rand() % (MAX_NUMBER_RANGE - MIN_NUMBER_RANGE + 1) + MIN_NUMBER_RANGE;
-    return generatedNumber;
-}
-
-void gameCycleLoop(void)
-{
-    int isContinueSelected = 1;
-    while (isContinueSelected)
+    // TODO: The actual game cycle
+    int currentRandomNumber = generateNewRandomNumber();
+    int isGuessedCorrect = IS_GUESSED_WRONG;
+    while (isGuessedCorrect != IS_GUESSED_CORRECT)
     {
-        int numberToGuess = generateRandomNumber();
-        puts("Number to guess has been generated.");
-
-        int currentMin = MIN_NUMBER_RANGE;
-        int currentMax = MAX_NUMBER_RANGE;
-
-        int isNumberGuessedCorrectly = 0;
-        int guessAttemptsCounter = 0;
-        while (!isNumberGuessedCorrectly)
-        {
-            isNumberGuessedCorrectly = guessingGameCycle(&guessAttemptsCounter, &currentMin, &currentMax, numberToGuess);
-        }
-
-        isContinueSelected = continueCheck();
-    }
-    puts("User chose not to continue guessing");
-}
-
-int captureCleanInputFromUser(char *whereToWriteString, size_t writingCapicity)
-{
-    if (fgets(whereToWriteString, writingCapicity, stdin) == NULL)
-    {
-        return 0; // input failed
-    }
-    else if (whereToWriteString[writingCapicity + 1] != '\0')
-    {
-        printf("Input was too long. Please input only %d.\n", writingCapicity);
-    }
-
-    // Remove the trailing newline, if present
-    whereToWriteString[strcspn(whereToWriteString, "\n")] = '\0';
-
-    return 1; // input success
-}
-
-int guessingGameCycle(int *guessAttemptsCounter, int *currentMin, int *currentMax, int numberToGuess)
-{
-    (*guessAttemptsCounter)++;
-    printf("The number is between %d and %d. Please enter your guess:\n", *currentMin, *currentMax);
-    int currentGuess = 0;
-    char bufferGuess[MAX_DIGITS_TO_GUESS + 1];
-
-    if (!captureCleanInputFromUser(bufferGuess, MAX_DIGITS_TO_GUESS + 1))
-    {
-        puts("Could not read the input number, try again");
-        return 0; // failed input
-    }
-
-    if (!convertFromStringToInteger(bufferGuess, currentGuess))
-    {
-        puts("Could not read the input number, try again");
-        return 0; // failed input
-    }
-
-    if (scanf("%d", &currentGuess) <= 0)
-    {
-        printf("invalid guess. Try again by inputting a number between %d and %d.\n", *currentMin, *currentMax);
-    }
-    if (currentGuess == numberToGuess)
-    {
-        printf("You got it! %d is right!\n You guessed the correct answer in %d attempts!\n", numberToGuess, *guessAttemptsCounter);
-        return 1; // successful guess
-    }
-    else if (currentGuess < numberToGuess)
-    {
-        puts("Your guess is too low. Guess higher.");
-        if (currentGuess > *currentMin)
-        {
-
-            *currentMin = currentGuess + 1;
-        }
-    }
-    else if (currentGuess > numberToGuess)
-    {
-        puts("Your guess is too high. Guess lower.");
-        if (currentGuess < *currentMax)
-        {
-            *currentMax = currentGuess - 1;
-        }
+        isGuessedCorrect = innerGameCycleGuessLoop();
     }
     return 0;
 }
 
-int continueCheck(void)
+// -----------------------
+void gameLooper()
 {
-    printf("Do you want another random number to guess? Type '%s' to continue.\n", KEYWORD_TO_CONTINUE);
-    char userContinueAnswer[32] = {0};
-    captureCleanInputFromUser(userContinueAnswer, sizeof(userContinueAnswer));
-    if (strcmp(userContinueAnswer, KEYWORD_TO_CONTINUE) == 0)
+
+    int gameContinue = GAME_ROOT_CYCLE_CONTINUE;
+    while (gameContinue == GAME_ROOT_CYCLE_CONTINUE)
     {
-        return 1;
+        oneGameCycle();
+        gameContinue = gameContinueCheck();
     }
-    return 0;
 }
 
-int convertFromStringToInteger(char sourceString, int *targetInt)
+// -----------------------
+int gameContinueCheck()
+{
+    int continueCheckUserInputAnswer = continueCheckUserInput();
+    if (continueCheckUserInputAnswer != CONTINUE_CHECK_USER_INPUT_YES)
+    {
+        return GAME_ROOT_CYCLE_QUIT;
+    }
+    return GAME_ROOT_CYCLE_CONTINUE;
+}
+
+// -----------------------
+int continueCheckUserInput()
+{
+    size_t InputStringSize = CONTINUE_STRING_CHECK_SIZE;
+    char *bufferInputFromUser;
+    int takeInputromUserStatus = takeInputFromUser(bufferInputFromUser, InputStringSize);
+    if (takeInputromUserStatus == takeInputfromUserFailed)
+    {
+        puts("continueCheckUserInput failed");
+        return CONTINUE_CHECK_USER_INPUT_FAILED;
+    }
+    if (strcmp(bufferInputFromUser, CONTINUE_KEYWORD))
+    {
+        return CONTINUE_CHECK_USER_INPUT_YES;
+    }
+    return CONTINUE_CHECK_USER_INPUT_NO;
+}
+
+// -----------------------
+int takeInputFromUser(char *whereToWriteString, size_t InputStringSize)
+{
+    char bufferInputFromUser[InputStringSize];
+    // taking user input
+    // checking for input error
+    if ((fgets(bufferInputFromUser, sizeof(bufferInputFromUser), stdin)) == NULL)
+    {
+        puts("takeInputFromUser failed");
+        return takeInputfromUserFailed;
+    }
+
+    // checking for too much input
+    size_t newlineIndex = strcspn(bufferInputFromUser, "\n");
+    if (bufferInputFromUser[newlineIndex] != '\n')
+    {
+        int bufferChar = getchar();
+        if (bufferChar != '\n' && bufferChar != EOF) // double checks to make sure the input wasnt exactly the correct size with a hanging \n
+        {
+            puts("takeInputFromUser failed");
+            while (bufferChar != EOF && bufferChar != '\n') // cleans up any extra input
+            {
+                bufferChar = getchar();
+            }
+            return takeInputfromUserFailed;
+        }
+    }
+
+    // removing the trailing newline if it exists
+    bufferInputFromUser[newlineIndex] = '\0';
+
+    // copy the new input into the target string
+    strcpy(whereToWriteString, bufferInputFromUser);
+    return takeInputfromUserSuccess;
+}
+
+// -----------------------
+int convertStringToNumber(char *stringToConvert)
 {
     char *endptr;
-    int convertedNumber = strtol(sourceString, &endptr, 10);
-    if (endptr == sourceString)
+    long int num;
+
+    num = strtol(stringToConvert, &endptr, 10);
+
+    if (endptr == stringToConvert)
     {
-        printf("Invalid: No number found\n");
-        return 0;
+        printf("No digits were found.\n");
     }
     else if (*endptr != '\0')
     {
-        printf("Invalid: Extra characters\n");
-        return 0;
+        printf("Invalid character: %c\n", *endptr);
     }
-    else
+
+    return num;
+}
+
+// -----------------------
+int generateNewRandomNumber()
+{
+    return rand() % (STARTING_MAX_NUMBER - STARTING_MIN_NUMBER + 1) + STARTING_MIN_NUMBER;
+}
+
+// -----------------------
+int innerGameCycleGuessLoop()
+{
+    int currentMin = STARTING_MIN_NUMBER;
+    int currentMax = STARTING_MAX_NUMBER;
+    int guessCounter = 0;
+    int oneGuessInstanceStatus = ONE_GUESS_INSTANCE_WRONG;
+    while (oneGuessInstanceStatus != ONE_GUESS_INSTANCE_RIGHT)
     {
-        *targetInt = convertedNumber;
-        return 1;
+        guessCounter += 1;
+        oneGuessInstance(&currentMin, &currentMax);
     }
+    return INNER_GAME_CYCLE_GUESS_LOOP_CORRECT;
+}
+
+// -----------------------
+int oneGuessInstance(int *currentMin, int *currenMax)
+{
+    int userCurrentGuess; // TODO:
 }
