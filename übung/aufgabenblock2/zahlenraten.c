@@ -46,12 +46,33 @@ const char *CONTINUE_KEYWORD = "yes";
 #define CONTINUE_CHECK_USER_INPUT_NO 0
 
 // takeInputFromUser constants
-#define takeInputfromUserFailed -1
+#define TAKE_INPUT_FROM_USER_FAILED -1
 #define TAKE_INPUT_FROM_USER_SUCCESS 1
 
 // converStringToNumber constant
 #define SUCCESS_convertStringToNumber 1
 #define ERROR_convertStringToNumber -1
+
+// log file constants
+#define LOGFILE_NAME "numberguesser_log"
+#define USERNAME_ARRAY_SIZE 32
+
+// askForUsername constants
+#define askForUsername_FAILED -1
+#define askForUsername_SUCCESS 1
+
+// prepareLogInfo constats
+#define prepareLogInfo_READY 1
+#define prepareLogInfo_ERROR -1
+
+// structs
+struct logEntry
+{
+    int theNumberToGuess;
+    int neededNumOfGuesses;
+    time_t timeOfAttemptStart;
+    char userName[USERNAME_ARRAY_SIZE];
+};
 
 // help functions forward declaration
 int gameRootCycle();
@@ -64,12 +85,25 @@ int generateNewRandomNumber();
 int innerGameCycleGuessLoop(int currentRandomNumber);
 int oneGuessInstance(int *currentMin, int *currentMax, int currentRandomNumber);
 int compareGuessedNumbers(int *currentMin, int *currentMax, int userGuessedNumber, int currentRandomNumber);
+int prepareLogInfo(struct logEntry *logEntryMain);
+int askForUsername(char *userName);
+int WriteNewLogEntry();
+int checkIfFileExists(char *fileNameToCheckFor);
 
 // -----------------------
 // start of main
-int main(int argc, char *argv[])
+int main(void)
 {
     puts("Programm started");
+
+    struct logEntry logEntryMain;
+    int prepareLogInfoStatus = prepareLogInfo(&logEntryMain);
+    if (prepareLogInfoStatus != prepareLogInfo_READY)
+    {
+        puts("Error during prepareLogInfo. Exiting programm now");
+        return 1;
+    }
+
     int gameQuitStatus = gameRootCycle();
     if (gameQuitStatus == GAME_ROOT_CYCLE_CRASH)
     {
@@ -144,7 +178,7 @@ int continueCheckUserInput()
 {
     char bufferInputFromUser[CONTINUE_STRING_CHECK_SIZE];
     int takeInputromUserStatus = takeInputFromUser(bufferInputFromUser, sizeof(bufferInputFromUser));
-    if (takeInputromUserStatus == takeInputfromUserFailed)
+    if (takeInputromUserStatus == TAKE_INPUT_FROM_USER_FAILED)
     {
         puts("continueCheckUserInput failed");
         return CONTINUE_CHECK_USER_INPUT_FAILED;
@@ -165,7 +199,7 @@ int takeInputFromUser(char *whereToWriteString, size_t InputStringSize)
     if ((fgets(bufferInputFromUser, sizeof(bufferInputFromUser), stdin)) == NULL)
     {
         puts("takeInputFromUser failed");
-        return takeInputfromUserFailed;
+        return TAKE_INPUT_FROM_USER_FAILED;
     }
 
     // checking for too much input
@@ -180,7 +214,7 @@ int takeInputFromUser(char *whereToWriteString, size_t InputStringSize)
             {
                 bufferChar = getchar();
             }
-            return takeInputfromUserFailed;
+            return TAKE_INPUT_FROM_USER_FAILED;
         }
     }
 
@@ -309,4 +343,64 @@ int compareGuessedNumbers(int *currentMin, int *currentMax, int userGuessedNumbe
     }
 
     return compareGuessedNumbersResponse;
+}
+
+// -----------------------
+int prepareLogInfo(struct logEntry *logEntryMain)
+{
+    logEntryMain->theNumberToGuess = 0;
+    logEntryMain->neededNumOfGuesses = 0;
+
+    time(&logEntryMain->timeOfAttemptStart);
+
+    char userName[USERNAME_ARRAY_SIZE];
+    int askForUsernameStatus = askForUsername(userName);
+    if (askForUsernameStatus == askForUsername_FAILED)
+    {
+        puts("prepareLogInfo failed because of an askForUsername error");
+        return prepareLogInfo_ERROR;
+    }
+    strcpy(logEntryMain->userName, userName);
+
+    return prepareLogInfo_READY;
+}
+
+// -----------------------
+int askForUsername(char *userName)
+{
+    int takeInputFromUserStatus = takeInputFromUser(userName, sizeof(userName));
+
+    if (takeInputFromUserStatus == TAKE_INPUT_FROM_USER_FAILED)
+    {
+        puts("Programm failed to get valid input for a username!");
+        return askForUsername_FAILED;
+    }
+
+    return askForUsername_SUCCESS;
+}
+
+// -----------------------
+int WriteNewLogEntry()
+{
+    checkIfFileExists(LOGFILE_NAME);
+
+    return 0;
+}
+
+// -----------------------
+int checkIfFileExists(char *fileNameToCheckFor)
+{
+    FILE *file = fopen(fileNameToCheckFor, "r");
+
+    if (file == NULL)
+    {
+        printf("File &s found." );
+    }
+    else
+    {
+        puts("File exists and can be opened.");
+        fclose(file);
+    }
+
+    return 0;
 }
