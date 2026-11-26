@@ -54,7 +54,8 @@ const char *CONTINUE_KEYWORD = "yes";
 #define ERROR_convertStringToNumber -1
 
 // log file constants
-#define LOGFILE_NAME "numberguesser_log"
+#define LOGFILE_NAME "numberguesser_log.txt"
+#define TOP_TEN_NAME "numberguesser_highscores.txt"
 #define USERNAME_ARRAY_SIZE 32
 
 // askForUsername constants
@@ -64,6 +65,22 @@ const char *CONTINUE_KEYWORD = "yes";
 // prepareLogInfo constats
 #define prepareLogInfo_READY 1
 #define prepareLogInfo_ERROR -1
+
+// checkIfFileExists_TRUE constants
+#define checkIfFileExists_TRUE 0
+#define checkIfFileExists_FALSE 1
+
+// createNewFile constants
+#define createNewFile_SUCCESS 0
+#define createNewFile_FAIL 1
+
+// WriteNewLogEntry constants
+#define WriteNewLogEntry_SUCCESS 0
+#define WriteNewLogEntry_FAIL 1
+
+// WriteNewTopTenEntryStatus constants
+#define WriteNewTopTenEntryStatus_SUCCESS 0
+#define WriteNewTopTenEntryStatus_FAIL 1
 
 // structs
 struct logEntry
@@ -75,23 +92,23 @@ struct logEntry
 };
 
 // help functions forward declaration
-int gameRootCycle();
-int oneGameCycle();
-void gameLooper();
+int gameRootCycle(struct logEntry logEntryMain);
+int oneGameCycle(struct logEntry logEntryMain);
+void gameLooper(struct logEntry logEntryMain);
 int gameContinueCheck();
 int continueCheckUserInput();
 int takeInputFromUser(char *whereToWriteString, size_t InputStringSize);
 int generateNewRandomNumber();
-int innerGameCycleGuessLoop(int currentRandomNumber);
+int innerGameCycleGuessLoop(int currentRandomNumber, struct logEntry logEntryMain);
 int oneGuessInstance(int *currentMin, int *currentMax, int currentRandomNumber);
 int compareGuessedNumbers(int *currentMin, int *currentMax, int userGuessedNumber, int currentRandomNumber);
 int prepareLogInfo(struct logEntry *logEntryMain);
 int askForUsername(char *userName);
-int WriteNewLogEntry();
+int WriteNewLogEntry(struct logEntry logEntryMain);
 int checkIfFileExists(char *fileNameToCheckFor);
+int createNewFile(char *newFileName);
+int WriteNewTopTenEntry(struct logEntry logEntryMain);
 
-// -----------------------
-// start of main
 int main(void)
 {
     puts("Programm started");
@@ -104,7 +121,7 @@ int main(void)
         return 1;
     }
 
-    int gameQuitStatus = gameRootCycle();
+    int gameQuitStatus = gameRootCycle(logEntryMain);
     if (gameQuitStatus == GAME_ROOT_CYCLE_CRASH)
     {
         puts("The game crashed. Quitting the programm now...");
@@ -117,28 +134,26 @@ int main(void)
 
     return 0;
 }
-// end of main
-// -----------------------
 
 // help functions definitions
-// -----------------------
-int gameRootCycle()
+int gameRootCycle(struct logEntry logEntryMain)
 {
     srand(time(0)); // seed the random number generator
 
-    gameLooper();
+    gameLooper(logEntryMain);
     return GAME_ROOT_CYCLE_QUIT; // normal gameQuitStatus
 }
 
-// -----------------------
-int oneGameCycle()
+int oneGameCycle(struct logEntry logEntryMain)
 {
     int currentRandomNumber = generateNewRandomNumber();
+    logEntryMain.theNumberToGuess = currentRandomNumber;
     puts("Random Number has been Generated. The game has started!\n\n");
+
     int isGuessedCorrect = oneGameCycle_IS_GUESSED_WRONG;
     while (isGuessedCorrect != oneGameCycle_IS_GUESSED_CORRECT)
     {
-        int innerGameCycleGuessLoopStatus = innerGameCycleGuessLoop(currentRandomNumber);
+        int innerGameCycleGuessLoopStatus = innerGameCycleGuessLoop(currentRandomNumber, logEntryMain);
         if (innerGameCycleGuessLoopStatus == INNER_GAME_CYCLE_GUESS_LOOP_CORRECT)
         {
             isGuessedCorrect = oneGameCycle_IS_GUESSED_CORRECT;
@@ -147,18 +162,16 @@ int oneGameCycle()
     return 0; // on correct guess
 }
 
-// -----------------------
-void gameLooper()
+void gameLooper(struct logEntry logEntryMain)
 {
     int gameContinue = GAME_ROOT_CYCLE_CONTINUE;
     while (gameContinue == GAME_ROOT_CYCLE_CONTINUE)
     {
-        oneGameCycle();
+        oneGameCycle(logEntryMain);
         gameContinue = gameContinueCheck();
     }
 }
 
-// -----------------------
 int gameContinueCheck()
 {
     puts("Do you want to continue playing with a new number?");
@@ -173,7 +186,6 @@ int gameContinueCheck()
     return GAME_ROOT_CYCLE_CONTINUE;
 }
 
-// -----------------------
 int continueCheckUserInput()
 {
     char bufferInputFromUser[CONTINUE_STRING_CHECK_SIZE];
@@ -190,7 +202,6 @@ int continueCheckUserInput()
     return CONTINUE_CHECK_USER_INPUT_NO;
 }
 
-// -----------------------
 int takeInputFromUser(char *whereToWriteString, size_t InputStringSize)
 {
     char bufferInputFromUser[InputStringSize];
@@ -226,7 +237,6 @@ int takeInputFromUser(char *whereToWriteString, size_t InputStringSize)
     return TAKE_INPUT_FROM_USER_SUCCESS;
 }
 
-// -----------------------
 int convertStringToNumber(char *stringToConvert, int *whereToSaveNumber)
 {
     char *endptr;
@@ -247,14 +257,12 @@ int convertStringToNumber(char *stringToConvert, int *whereToSaveNumber)
     return SUCCESS_convertStringToNumber;
 }
 
-// -----------------------
 int generateNewRandomNumber()
 {
     return rand() % (STARTING_MAX_NUMBER - STARTING_MIN_NUMBER + 1) + STARTING_MIN_NUMBER;
 }
 
-// -----------------------
-int innerGameCycleGuessLoop(int currentRandomNumber)
+int innerGameCycleGuessLoop(int currentRandomNumber, struct logEntry logEntryMain)
 {
     int currentMin = STARTING_MIN_NUMBER;
     int currentMax = STARTING_MAX_NUMBER;
@@ -280,10 +288,26 @@ int innerGameCycleGuessLoop(int currentRandomNumber)
             puts("Something went really wrong with the programm. Please click ctrl + c and try again.");
         }
     }
+
+    logEntryMain.neededNumOfGuesses = guessCounter;
+
+    int WriteNewLogEntryStatus = WriteNewLogEntry(logEntryMain);
+    if (WriteNewLogEntryStatus == WriteNewLogEntry_FAIL)
+    {
+        puts("WriteNewLogEntry failed in innerGameCycleGuessLoop. Could not save results");
+        exit(EXIT_FAILURE);
+    }
+
+    int WriteNewTopTenEntryStatus = WriteNewTopTenEntry(logEntryMain);
+    if (WriteNewTopTenEntryStatus == WriteNewTopTenEntryStatus_FAIL)
+    {
+        puts("WriteNewTopTenEntry failed in innerGameCycleGuessLoop.");
+        exit(EXIT_FAILURE);
+    }
+
     return INNER_GAME_CYCLE_GUESS_LOOP_CORRECT;
 }
 
-// -----------------------
 int oneGuessInstance(int *currentMin, int *currentMax, int currentRandomNumber)
 {
     int oneGuessInstanceResponse;
@@ -345,7 +369,6 @@ int compareGuessedNumbers(int *currentMin, int *currentMax, int userGuessedNumbe
     return compareGuessedNumbersResponse;
 }
 
-// -----------------------
 int prepareLogInfo(struct logEntry *logEntryMain)
 {
     logEntryMain->theNumberToGuess = 0;
@@ -365,7 +388,6 @@ int prepareLogInfo(struct logEntry *logEntryMain)
     return prepareLogInfo_READY;
 }
 
-// -----------------------
 int askForUsername(char *userName)
 {
     int takeInputFromUserStatus = takeInputFromUser(userName, sizeof(userName));
@@ -379,22 +401,37 @@ int askForUsername(char *userName)
     return askForUsername_SUCCESS;
 }
 
-// -----------------------
-int WriteNewLogEntry()
+int WriteNewLogEntry(struct logEntry logEntryMain)
 {
-    checkIfFileExists(LOGFILE_NAME);
+    if (checkIfFileExists(LOGFILE_NAME) == checkIfFileExists_FALSE)
+    {
+        createNewFile(LOGFILE_NAME);
+    }
 
-    return 0;
+    FILE *file = fopen(LOGFILE_NAME, "a");
+
+    if (file == NULL)
+    {
+        perror("Failed to open file in WriteNewLogEntry");
+        return WriteNewLogEntry_FAIL;
+    }
+
+    fprintf(file, "DATE: %s | Number of Guesses: %d | Number to guess: %d | Guessed by: %s\n",
+            ctime(&logEntryMain.timeOfAttemptStart), logEntryMain.neededNumOfGuesses, logEntryMain.theNumberToGuess, logEntryMain.userName);
+
+    fclose(file);
+
+    return WriteNewLogEntry_SUCCESS;
 }
 
-// -----------------------
 int checkIfFileExists(char *fileNameToCheckFor)
 {
     FILE *file = fopen(fileNameToCheckFor, "r");
 
     if (file == NULL)
     {
-        printf("File &s found." );
+        printf("File &s found.");
+        return checkIfFileExists_FALSE;
     }
     else
     {
@@ -402,5 +439,51 @@ int checkIfFileExists(char *fileNameToCheckFor)
         fclose(file);
     }
 
-    return 0;
+    return checkIfFileExists_TRUE;
+}
+
+int createNewFile(char *newFileName)
+{
+    FILE *file = fopen(newFileName, "w");
+
+    if (file == NULL)
+    {
+        perror("Failed to create file");
+        return createNewFile_FAIL;
+    }
+
+    fclose(file);
+
+    return createNewFile_SUCCESS;
+}
+
+int WriteNewTopTenEntry(struct logEntry logEntryMain)
+{
+    int TopEntryFileExists = checkIfcheckIfFileExists(TOP_TEN_NAME);
+    if (TopEntryFileExists = checkIfFileExists_FALSE)
+    {
+        createNewFile(TOP_TEN_NAME);
+    }
+
+    // adding a new entry
+    FILE *file = fopen("bestenliste.txt", "r");
+
+    if (file == NULL)
+    {
+        perror("Failed to open file in WriteNewTopEntry");
+        return EXIT_FAILURE;
+    }
+
+    char buffer[256];
+
+    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    {
+        printf("%s", buffer);
+    }
+
+    fclose(file);
+
+    return WriteNewTopTenEntryStatus_FAIL;
+
+    return WriteNewTopTenEntryStatus_SUCCESS;
 }
