@@ -14,6 +14,9 @@ Die Eintr¨ age in der Bestenliste sind nach der Anzahl der Rateversuche geordne
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <limits.h>
 
 // gameRootCycle constants
 #define GAME_ROOT_CYCLE_QUIT 0
@@ -55,7 +58,9 @@ const char *CONTINUE_KEYWORD = "yes";
 
 // log file constants
 #define LOGFILE_NAME "numberguesser_log.txt"
-#define TOP_TEN_NAME "numberguesser_highscores.txt"
+#define FILE_TOP_TEN "numberguesser_highscores.txt"
+#define FILE_TOP_TEN_TEMP "numberguesser_highscores.tmp"
+#define TOP_TEN_MAX_ENTRIES 10
 #define USERNAME_ARRAY_SIZE 32
 
 // askForUsername constants
@@ -78,9 +83,10 @@ const char *CONTINUE_KEYWORD = "yes";
 #define WriteNewLogEntry_SUCCESS 0
 #define WriteNewLogEntry_FAIL 1
 
-// WriteNewTopTenEntryStatus constants
-#define WriteNewTopTenEntryStatus_SUCCESS 0
-#define WriteNewTopTenEntryStatus_FAIL 1
+// writeNewTopTenEntryStatus constants
+#define writeNewTopTenEntryStatus_SUCCESS 0
+#define writeNewTopTenEntryStatus_FAIL 1
+#define NUMBER_OF_GUESSES_KEYWORD_WITH_TRAILING_WHITESPACE "Number of Guesses: "
 
 // structs
 struct logEntry
@@ -103,11 +109,12 @@ int innerGameCycleGuessLoop(int currentRandomNumber, struct logEntry logEntryMai
 int oneGuessInstance(int *currentMin, int *currentMax, int currentRandomNumber);
 int compareGuessedNumbers(int *currentMin, int *currentMax, int userGuessedNumber, int currentRandomNumber);
 int prepareLogInfo(struct logEntry *logEntryMain);
-int askForUsername(char *userName);
+int askForUsername(char *userName, size_t userNameSize);
 int WriteNewLogEntry(struct logEntry logEntryMain);
 int checkIfFileExists(char *fileNameToCheckFor);
 int createNewFile(char *newFileName);
-int WriteNewTopTenEntry(struct logEntry logEntryMain);
+int writeNewTopTenEntry(struct logEntry logEntryMain);
+int writeLogEntryToFile(FILE *file, struct logEntry logEntryMain);
 
 int main(void)
 {
@@ -148,6 +155,12 @@ int oneGameCycle(struct logEntry logEntryMain)
 {
     int currentRandomNumber = generateNewRandomNumber();
     logEntryMain.theNumberToGuess = currentRandomNumber;
+    // Record the start of this round, not just the start of the program.
+    if (time(&logEntryMain.timeOfAttemptStart) == (time_t)-1)
+    {
+        puts("Failed to obtain the current time");
+        exit(EXIT_FAILURE);
+    }
     puts("Random Number has been Generated. The game has started!\n\n");
 
     int isGuessedCorrect = oneGameCycle_IS_GUESSED_WRONG;
@@ -298,10 +311,10 @@ int innerGameCycleGuessLoop(int currentRandomNumber, struct logEntry logEntryMai
         exit(EXIT_FAILURE);
     }
 
-    int WriteNewTopTenEntryStatus = WriteNewTopTenEntry(logEntryMain);
-    if (WriteNewTopTenEntryStatus == WriteNewTopTenEntryStatus_FAIL)
+    int writeNewTopTenEntryStatus = writeNewTopTenEntry(logEntryMain);
+    if (writeNewTopTenEntryStatus == writeNewTopTenEntryStatus_FAIL)
     {
-        puts("WriteNewTopTenEntry failed in innerGameCycleGuessLoop.");
+        puts("Could not update the highscores file. The game was saved in the log.");
         exit(EXIT_FAILURE);
     }
 
@@ -374,10 +387,10 @@ int prepareLogInfo(struct logEntry *logEntryMain)
     logEntryMain->theNumberToGuess = 0;
     logEntryMain->neededNumOfGuesses = 0;
 
-    time(&logEntryMain->timeOfAttemptStart);
+    logEntryMain->timeOfAttemptStart = 0; // Set at the start of each round.
 
     char userName[USERNAME_ARRAY_SIZE];
-    int askForUsernameStatus = askForUsername(userName);
+    int askForUsernameStatus = askForUsername(userName, sizeof(userName));
     if (askForUsernameStatus == askForUsername_FAILED)
     {
         puts("prepareLogInfo failed because of an askForUsername error");
@@ -388,9 +401,10 @@ int prepareLogInfo(struct logEntry *logEntryMain)
     return prepareLogInfo_READY;
 }
 
-int askForUsername(char *userName)
+int askForUsername(char *userName, size_t userNameSize)
 {
-    int takeInputFromUserStatus = takeInputFromUser(userName, sizeof(userName));
+    puts("Please enter your username:");
+    int takeInputFromUserStatus = takeInputFromUser(userName, userNameSize);
 
     if (takeInputFromUserStatus == TAKE_INPUT_FROM_USER_FAILED)
     {
@@ -401,27 +415,48 @@ int askForUsername(char *userName)
     return askForUsername_SUCCESS;
 }
 
-int WriteNewLogEntry(struct logEntry logEntryMain)
+// Writes exactly one entry to an already opened file.
+// The calling function is responsible for opening and closing that file.
+int writeLogEntryToFile(FILE *file, struct logEntry logEntryMain)
 {
-    if (checkIfFileExists(LOGFILE_NAME) == checkIfFileExists_FALSE)
+    char *dateString = ctime(&logEntryMain.timeOfAttemptStart);
+    if (dateString == NULL)
     {
-        createNewFile(LOGFILE_NAME);
+        puts("Could not convert the date");
+        return WriteNewLogEntry_FAIL;
     }
 
-    FILE *file = fopen(LOGFILE_NAME, "a");
+    // %.24s omits the trailing newline in the usual ctime() string.
+    if (fprintf(file, "DATE: %.24s | %s%d | Number to guess: %d | Guessed by: %s\n",
+                dateString, NUMBER_OF_GUESSES_KEYWORD_WITH_TRAILING_WHITESPACE,
+                logEntryMain.neededNumOfGuesses, logEntryMain.theNumberToGuess,
+                logEntryMain.userName) < 0)
+    {
+        perror("Failed to write log entry");
+        return WriteNewLogEntry_FAIL;
+    }
 
+    return WriteNewLogEntry_SUCCESS;
+}
+
+int WriteNewLogEntry(struct logEntry logEntryMain)
+{
+    // Append mode creates the log if necessary and preserves existing entries.
+    FILE *file = fopen(LOGFILE_NAME, "a");
     if (file == NULL)
     {
         perror("Failed to open file in WriteNewLogEntry");
         return WriteNewLogEntry_FAIL;
     }
 
-    fprintf(file, "DATE: %s | Number of Guesses: %d | Number to guess: %d | Guessed by: %s\n",
-            ctime(&logEntryMain.timeOfAttemptStart), logEntryMain.neededNumOfGuesses, logEntryMain.theNumberToGuess, logEntryMain.userName);
+    int status = writeLogEntryToFile(file, logEntryMain);
+    if (fclose(file) == EOF)
+    {
+        perror("Failed to close log file");
+        return WriteNewLogEntry_FAIL;
+    }
 
-    fclose(file);
-
-    return WriteNewLogEntry_SUCCESS;
+    return status;
 }
 
 int checkIfFileExists(char *fileNameToCheckFor)
@@ -430,7 +465,7 @@ int checkIfFileExists(char *fileNameToCheckFor)
 
     if (file == NULL)
     {
-        printf("File &s found.");
+        printf("Could not open file %s.\n", fileNameToCheckFor);
         return checkIfFileExists_FALSE;
     }
     else
@@ -457,33 +492,152 @@ int createNewFile(char *newFileName)
     return createNewFile_SUCCESS;
 }
 
-int WriteNewTopTenEntry(struct logEntry logEntryMain)
+int writeNewTopTenEntry(struct logEntry logEntryMain)
 {
-    int TopEntryFileExists = checkIfcheckIfFileExists(TOP_TEN_NAME);
-    if (TopEntryFileExists = checkIfFileExists_FALSE)
-    {
-        createNewFile(TOP_TEN_NAME);
-    }
-
-    // adding a new entry
-    FILE *file = fopen("bestenliste.txt", "r");
-
+    // a+ creates an empty file if needed, without erasing an existing file.
+    // We only READ from this stream; all changes go into the temporary file.
+    FILE *file = fopen(FILE_TOP_TEN, "a+");
     if (file == NULL)
     {
-        perror("Failed to open file in WriteNewTopEntry");
-        return EXIT_FAILURE;
+        perror("Failed to open highscores file");
+        return writeNewTopTenEntryStatus_FAIL;
+    }
+
+    // Explicitly move to the start before reading.
+    if (fseek(file, 0, SEEK_SET) != 0)
+    {
+        perror("Failed to move to the beginning of the highscores file");
+        fclose(file);
+        return writeNewTopTenEntryStatus_FAIL;
+    }
+
+    FILE *temporaryFile = fopen(FILE_TOP_TEN_TEMP, "w");
+    if (temporaryFile == NULL)
+    {
+        perror("Failed to open temporary highscores file");
+        fclose(file);
+        return writeNewTopTenEntryStatus_FAIL;
     }
 
     char buffer[256];
+    size_t lineTracker = 0;
+    size_t linesWritten = 0;
+    bool newEntryHasBeenInserted = false;
+    bool processingFailed = false;
+    const char *keywordToLookFor = NUMBER_OF_GUESSES_KEYWORD_WITH_TRAILING_WHITESPACE;
 
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
-        printf("%s", buffer);
+        lineTracker++;
+
+        // Every entry written by writeLogEntryToFile ends with a newline.
+        // Reject incomplete/oversized lines instead of rewriting corrupt data.
+        if (strchr(buffer, '\n') == NULL)
+        {
+            fprintf(stderr, "Incomplete or oversized entry on line %zu\n", lineTracker);
+            processingFailed = true;
+            break;
+        }
+
+        // 1. Find the number of guesses in the current line.
+        char *foundPosition = strstr(buffer, keywordToLookFor);
+        if (foundPosition == NULL)
+        {
+            fprintf(stderr, "Keyword not found on line %zu\n", lineTracker);
+            processingFailed = true;
+            break;
+        }
+        foundPosition += strlen(keywordToLookFor);
+
+        // 2. Convert the number and validate it and its following separator.
+        char *endptr;
+        errno = 0;
+        long guessesFromFile = strtol(foundPosition, &endptr, 10);
+        if (endptr == foundPosition || errno == ERANGE ||
+            guessesFromFile < 1 || guessesFromFile > INT_MAX ||
+            strncmp(endptr, " | Number to guess: ", strlen(" | Number to guess: ")) != 0)
+        {
+            fprintf(stderr, "Invalid number of guesses on line %zu\n", lineTracker);
+            processingFailed = true;
+            break;
+        }
+
+        // 3. Insert the new entry BEFORE the first equal or worse old entry.
+        if (!newEntryHasBeenInserted &&
+            guessesFromFile >= logEntryMain.neededNumOfGuesses &&
+            linesWritten < TOP_TEN_MAX_ENTRIES)
+        {
+            if (writeLogEntryToFile(temporaryFile, logEntryMain) != WriteNewLogEntry_SUCCESS)
+            {
+                processingFailed = true;
+                break;
+            }
+            linesWritten++;
+            newEntryHasBeenInserted = true;
+        }
+
+        // 4. Copy the existing entry, but never write more than ten entries.
+        if (linesWritten < TOP_TEN_MAX_ENTRIES)
+        {
+            if (fputs(buffer, temporaryFile) == EOF)
+            {
+                perror("Failed to copy existing highscore");
+                processingFailed = true;
+                break;
+            }
+            linesWritten++;
+        }
     }
 
-    fclose(file);
+    // NULL from fgets() can mean a read error, not just EOF.
+    if (ferror(file))
+    {
+        perror("Failed to read highscores file");
+        processingFailed = true;
+    }
 
-    return WriteNewTopTenEntryStatus_FAIL;
+    // 5. If not inserted yet, append only if there is still room.
+    if (!processingFailed && !newEntryHasBeenInserted && linesWritten < TOP_TEN_MAX_ENTRIES)
+    {
+        if (writeLogEntryToFile(temporaryFile, logEntryMain) != WriteNewLogEntry_SUCCESS)
+        {
+            processingFailed = true;
+        }
+        else
+        {
+            linesWritten++;
+            newEntryHasBeenInserted = true;
+        }
+    }
 
-    return WriteNewTopTenEntryStatus_SUCCESS;
+    // 6. Close both streams even if one operation fails.
+    if (fclose(file) == EOF)
+    {
+        perror("Failed to close original highscores file");
+        processingFailed = true;
+    }
+    if (fclose(temporaryFile) == EOF)
+    {
+        perror("Failed to close temporary highscores file");
+        processingFailed = true;
+    }
+
+    // Never replace the original with an incomplete temporary file.
+    if (processingFailed)
+    {
+        if (remove(FILE_TOP_TEN_TEMP) != 0)
+        {
+            perror("Failed to remove incomplete temporary file");
+        }
+        return writeNewTopTenEntryStatus_FAIL;
+    }
+
+    // 7. On Linux, rename() replaces the original file if it exists.
+    if (rename(FILE_TOP_TEN_TEMP, FILE_TOP_TEN) != 0)
+    {
+        perror("Failed to replace highscores file");
+        return writeNewTopTenEntryStatus_FAIL;
+    }
+
+    return writeNewTopTenEntryStatus_SUCCESS;
 }
